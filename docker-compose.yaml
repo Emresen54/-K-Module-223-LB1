@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  mariadb:
+    image: mariadb:latest
+    volumes:
+      - m223_project_mariadb:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=supersecret123
+      - MYSQL_DATABASE=minitwitter
+      - MYSQL_USER=minitwitter
+      - MYSQL_PASSWORD=supersecret123
+    ports:
+      - 3306:3306
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    depends_on:
+      - mariadb
+    restart: always
+    environment:
+      - PMA_HOST=mariadb
+      - PMA_PORT=3306
+      - MYSQL_ROOT_PASSWORD=supersecret123
+    ports:
+      - 9200:80
+
+  app:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - 4200:4200
+    command: sh -c "yarn install && yarn dev"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=mariadb
+      - DB_NAME=minitwitter
+      - DB_USER=minitwitter
+      - DB_PASSWORD=supersecret123
+      - TOKEN_SECRET=4761b126d0e62220112544faddb0bca1c652d6e98913832b3c13eb827f6e83a8
+    depends_on:
+      - mariadb
+
+volumes:
+  m223_project_mariadb:

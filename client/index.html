@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="./css/output.css" rel="stylesheet" />
+    <script src="client.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@1.5.3/dist/flowbite.min.js"></script>
+    <title>MiniTwitter</title>
+  </head>
+  <body class="flex items-start justify-center min-h-screen bg-slate-800">
+    <button
+      id="logoutBtn"
+      class="absolute top-28 right-10 px-6 py-2 text-white bg-secondary rounded-lg hover:bg-red-500 focus:outline-none transition-colors duration-300"
+    >
+      Logout
+    </button>
+
+    <!-- Profile Options Sidebar -->
+    <div id="profileOptions" class="hidden absolute top-40 left-10 flex-col space-y-4">
+      <button
+        id="changeUsername"
+        class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-accent hover:text-black focus:outline-none transition-colors duration-300"
+      >
+        Change Username
+      </button>
+      <button
+        id="changePassword"
+        class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-accent hover:text-black focus:outline-none transition-colors duration-300"
+      >
+        Change Password
+      </button>
+    </div>
+    <!-- Profile Options Are Over -->
+
+    <div class="flex flex-col space-x-4 p-4 rounded-xl mt-10 max-w-2xl w-full h-44">
+      <div class="flex justify-center items-center mb-4">
+        <button
+          id="viewAllTweets"
+          class="tab-button px-4 py-2 text-gray-500 hover:text-white font-semibold transition-colors duration-300 focus:outline-none border-b-4 border-transparent"
+        >
+          Home
+        </button>
+        <button
+          id="viewMyTweets"
+          class="tab-button ml-6 px-4 py-2 text-gray-500 hover:text-white font-semibold transition-colors duration-300 focus:outline-none border-b-4 border-transparent"
+        >
+          Profile
+        </button>
+      </div>
+
+      <div class="p-4 rounded-xl bg-primary w-full drop-shadow-[0_0px_15px_] relative">
+        <textarea
+          name="textarea"
+          id="tweetInput"
+          rows="2"
+          placeholder="What is happening?!"
+          class="w-full p-4 bg-primary text-white outline-none rounded-lg"
+        ></textarea>
+        <button
+          id="postTweet"
+          class="absolute bottom-4 right-4 px-4 py-2 text-white bg-secondary rounded-lg hover:bg-accent hover:text-black focus:outline-none transition-colors duration-300"
+        >
+          Tweet
+        </button>
+      </div>
+
+      <div id="tweetsContainer" class="space-y-4"></div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        const tweetInput = document.getElementById("tweetInput");
+        const postTweetButton = document.getElementById("postTweet");
+        const tweetsContainer = document.getElementById("tweetsContainer");
+        const viewMyTweetsButton = document.getElementById("viewMyTweets");
+        const viewAllTweetsButton = document.getElementById("viewAllTweets");
+
+        // Profile Options Elements
+        const profileOptions = document.getElementById("profileOptions");
+        const changeUsernameButton = document.getElementById("changeUsername");
+        const changePasswordButton = document.getElementById("changePassword");
+
+        // Redirect to respective pages
+        changeUsernameButton.addEventListener("click", () => {
+          window.location.href = "/changeUsername";
+        });
+
+        changePasswordButton.addEventListener("click", () => {
+          window.location.href = "/changePassword";
+        });
+
+        // Show Profile Options on Profile Tab Click
+        viewMyTweetsButton.addEventListener("click", () => {
+          profileOptions.classList.remove("hidden"); 
+          loadTweets("my");
+        });
+
+        // Hide Profile Options on Home Tab Click
+        viewAllTweetsButton.addEventListener("click", () => {
+          profileOptions.classList.add("hidden"); 
+          loadTweets("personalTweets");
+        });
+
+        async function handleLikeDislike(tweetId, isLike) {
+          try {
+            const response = await fetch("/tweets/like", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ post_id: tweetId, isPositive: isLike }),
+            });
+
+            if (response.ok) {
+              loadTweets();
+            } else {
+              console.error("Failed to update like/dislike.");
+            }
+          } catch (error) {
+            console.error("Error updating like/dislike:", error);
+          }
+        }
+
+        async function loadTweets(filter = "personalTweets") {
+          try {
+            const endpoint = filter === "personalTweets" ? "/tweets" : "/myTweets";
+            const response = await fetch(endpoint, {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+
+            const data = await response.json();
+            const currentUsername = data.username;
+            tweetsContainer.innerHTML = "";
+
+            data.tweets.forEach((tweet) => {
+              const tweetElement = document.createElement("div");
+              tweetElement.className = "bg-slate-700 p-4 rounded-lg shadow-lg mb-4";
+
+              const contentContainer = document.createElement("div");
+              contentContainer.className = "flex justify-between items-center";
+
+              const textContainer = document.createElement("div");
+
+              const userElement = document.createElement("h1");
+              userElement.className = "text-xl font-bold text-white";
+              userElement.textContent = tweet.username;
+
+              const contentElement = document.createElement("p");
+              contentElement.className = "mt-2 text-white";
+              contentElement.textContent = tweet.content;
+
+              textContainer.appendChild(userElement);
+              textContainer.appendChild(contentElement);
+              contentContainer.appendChild(textContainer);
+
+              const buttonsContainer = document.createElement("div");
+              buttonsContainer.className = "flex space-x-4";
+
+              const likeButton = document.createElement("button");
+              likeButton.className = "text-white hover:text-green-400";
+              likeButton.innerHTML = `👍 <span>${tweet.likes || 0}</span>`;
+              likeButton.addEventListener("click", () => {
+                handleLikeDislike(tweet.id, true);
+              });
+
+              const dislikeButton = document.createElement("button");
+              dislikeButton.className = "text-white hover:text-red-400";
+              dislikeButton.innerHTML = `👎 <span>${tweet.dislikes || 0}</span>`;
+              dislikeButton.addEventListener("click", () => {
+                handleLikeDislike(tweet.id, false);
+              });
+
+              buttonsContainer.appendChild(likeButton);
+              buttonsContainer.appendChild(dislikeButton);
+
+              if (tweet.username === currentUsername) {
+                const editBtn = document.createElement("button");
+                editBtn.innerHTML = "✏️";
+                editBtn.addEventListener("click", async () => {
+                  const newContent = prompt("Edit your tweet:", tweet.content);
+                  if (newContent && newContent.trim() !== "") {
+                    await fetch("/tweets", {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        tweetID: tweet.id,
+                        newContent,
+                      }),
+                    });
+                    loadTweets();
+                  }
+                });
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.innerHTML = "🗑️";
+                deleteBtn.addEventListener("click", async () => {
+                  await fetch("/tweets", {
+                    method: "DELETE",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ tweetID: tweet.id }),
+                  });
+                  loadTweets();
+                });
+
+                buttonsContainer.appendChild(editBtn);
+                buttonsContainer.appendChild(deleteBtn);
+              }
+
+              contentContainer.appendChild(buttonsContainer);
+              tweetElement.appendChild(contentContainer);
+              tweetsContainer.appendChild(tweetElement);
+            });
+          } catch (error) {
+            console.error("Error loading tweets:", error);
+          }
+        }
+
+        postTweetButton.addEventListener("click", async () => {
+          const content = tweetInput.value.trim();
+
+          if (!content) {
+            alert("⚠️ Tweet content cannot be empty!");
+            return;
+          }
+
+          await fetch("/tweets", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ content }),
+          });
+
+          tweetInput.value = "";
+          loadTweets();
+        });
+
+        loadTweets("personalTweets");
+
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+          localStorage.removeItem("token");
+          alert("🫡 You are logged out");
+          window.location.href = "/login";
+        });
+      });
+    </script>
+  </body>
+</html>
